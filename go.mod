@@ -1,6 +1,6 @@
 module github.com/gotify/plugin-template
 
-go 1.23.0
+go 1.21
 
 require (
 	github.com/gin-gonic/gin v1.10.0
@@ -37,5 +37,3 @@ require (
 	google.golang.org/protobuf v1.36.2 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-toolchain go1.24.1

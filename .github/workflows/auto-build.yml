@@ -79,6 +79,13 @@ jobs:
           # Add go/bin to PATH for gomod-cap
           export PATH=$PATH:$HOME/go/bin
           
+          # Fetch the Go version used by this Gotify version
+          GO_VERSION=$(curl -s https://raw.githubusercontent.com/gotify/server/${{ matrix.gotify-version }}/GO_VERSION)
+          GO_MAJOR_MINOR=$(echo $GO_VERSION | cut -d. -f1,2)
+          
+          # Update go.mod to use compatible Go version
+          sed -i "s/^go .*/go $GO_MAJOR_MINOR/" go.mod
+          
           make GOTIFY_VERSION="${{ matrix.gotify-version }}" \
                FILE_SUFFIX="-for-gotify-${{ matrix.gotify-version }}" \
                build
