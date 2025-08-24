@@ -1,6 +1,6 @@
 BUILDDIR=./build
 GOTIFY_VERSION=master
-PLUGIN_NAME=myplugin
+PLUGIN_NAME=webhook-forwarder
 PLUGIN_ENTRY=plugin.go
 GO_VERSION=`cat $(BUILDDIR)/gotify-server-go-version`
 DOCKER_BUILD_IMAGE=gotify/build
@@ -16,7 +16,7 @@ create-build-dir:
 
 update-go-mod: create-build-dir
 	wget -LO ${BUILDDIR}/gotify-server.mod https://raw.githubusercontent.com/gotify/server/${GOTIFY_VERSION}/go.mod
-	gomod-cap -from ${BUILDDIR}/gotify-server.mod -to go.mod
+	~/go/bin/gomod-cap -from ${BUILDDIR}/gotify-server.mod -to go.mod
 	rm ${BUILDDIR}/gotify-server.mod || true
 	go mod tidy
 

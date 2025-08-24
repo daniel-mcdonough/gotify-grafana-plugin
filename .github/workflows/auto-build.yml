@@ -1,0 +1,120 @@
+name: Check and Build for New Gotify Versions
+
+on:
+  schedule:
+    # Run weekly to catch new Gotify releases
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+  push:
+    branches: [ master, main ]
+    tags:
+      - 'v*'
+
+jobs:
+  check-versions:
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.check-versions.outputs.versions }}
+      has_new: ${{ steps.check-versions.outputs.has_new }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Check for new Gotify versions
+        id: check-versions
+        run: |
+          # Get the latest patch version for each minor version
+          LATEST_VERSIONS=$(curl -s https://api.github.com/repos/gotify/server/releases?per_page=30 | \
+            jq -r '[
+              .[] | 
+              select(.prerelease == false) | 
+              .tag_name | 
+              capture("^v(?<major>[0-9]+)\\.(?<minor>[0-9]+)\\.(?<patch>[0-9]+)$") |
+              {major: .major, minor: .minor, patch: .patch, version: ("v" + .major + "." + .minor + "." + .patch)}
+            ] | 
+            group_by(.major + "." + .minor) | 
+            map(max_by(.patch).version) | 
+            sort | 
+            reverse | 
+            .[0:7]')
+          
+          # Check if we have artifacts for these versions already
+          # You could check releases or maintain a versions file
+          echo "Latest versions from Gotify: $LATEST_VERSIONS"
+          
+          # For now, just build the latest versions
+          VERSIONS_JSON=$(echo "$LATEST_VERSIONS" | jq -c '@json')
+          echo "versions=$VERSIONS_JSON" >> $GITHUB_OUTPUT
+          echo "has_new=true" >> $GITHUB_OUTPUT
+
+  build:
+    needs: check-versions
+    if: needs.check-versions.outputs.has_new == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        gotify-version: ${{ fromJson(needs.check-versions.outputs.versions) }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Install gomod-cap
+        run: go install github.com/gotify/plugin-api/cmd/gomod-cap@latest
+
+      - name: Build for ${{ matrix.gotify-version }}
+        run: |
+          # Add go/bin to PATH for gomod-cap
+          export PATH=$PATH:$HOME/go/bin
+          
+          make GOTIFY_VERSION="${{ matrix.gotify-version }}" \
+               FILE_SUFFIX="-for-gotify-${{ matrix.gotify-version }}" \
+               build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins-${{ matrix.gotify-version }}
+          path: build/*.so
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          find artifacts -name "*.so" -exec cp {} release/ \;
+          cd release && sha256sum *.so > SHA256SUMS
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*
+          generate_release_notes: true
+          body: |
+            ## Webhook Forwarder Plugin
+            
+            Auto-built for the latest Gotify versions. Download the appropriate version for your server:
+            
+            ### Version Compatibility
+            - Files ending in `-for-gotify-vX.X.X.so` are built for that specific Gotify version
+            - Each file includes the architecture in its name (amd64, arm64, arm-7)
+            
+            ### Installation
+            1. Download the appropriate `.so` file for your Gotify version and architecture
+            2. Place it in your Gotify `data/plugins` directory
+            3. Restart Gotify server
+            
+            ### Checksums
+            See `SHA256SUMS` file for integrity verification.

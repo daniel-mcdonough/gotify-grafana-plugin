@@ -1,0 +1,82 @@
+name: Manual Build for Specific Versions
+
+on:
+  workflow_dispatch:
+    inputs:
+      gotify_version:
+        description: 'Gotify version to build for (e.g., v2.6.3)'
+        required: false
+        default: ''
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Default set of stable versions if no specific version provided
+        # Only includes latest patch of each minor version
+        gotify-version:
+          - v2.6.3  # Latest 2.6.x
+          - v2.5.0  # Latest 2.5.x
+          - v2.4.0  # Latest 2.4.x
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Install gomod-cap
+        run: GO111MODULE=off go get -u github.com/gotify/plugin-api/cmd/gomod-cap
+
+      - name: Build for ${{ matrix.gotify-version }}
+        run: |
+          make GOTIFY_VERSION="${{ matrix.gotify-version }}" \
+               FILE_SUFFIX="-for-gotify-${{ matrix.gotify-version }}" \
+               build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins-${{ matrix.gotify-version }}
+          path: build/*.so
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Prepare release assets
+        run: |
+          mkdir -p release
+          find artifacts -name "*.so" -exec cp {} release/ \;
+          cd release && sha256sum *.so > SHA256SUMS
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: release/*
+          generate_release_notes: true
+          body: |
+            ## Webhook Forwarder Plugin
+            
+            Built for multiple Gotify versions. Download the appropriate version for your server:
+            
+            ### Version Compatibility
+            - Files ending in `-for-gotify-vX.X.X.so` are built for that specific Gotify version
+            - Each file includes the architecture in its name (amd64, arm64, arm-7)
+            
+            ### Installation
+            1. Download the appropriate `.so` file for your Gotify version and architecture
+            2. Place it in your Gotify `data/plugins` directory
+            3. Restart Gotify server
+            
+            ### Checksums
+            See `SHA256SUMS` file for integrity verification.
