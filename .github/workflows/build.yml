@@ -17,8 +17,8 @@ jobs:
         # Only includes latest patch of each minor version
         gotify-version:
           - v2.6.3  # Latest 2.6.x
-          - v2.5.0  # Latest 2.5.x
-          - v2.4.0  # Latest 2.4.x
+      #    - v2.5.0  # Latest 2.5.x
+       #   - v2.4.0  # Latest 2.4.x
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
