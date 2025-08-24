@@ -1,0 +1,49 @@
+name: Build for Legacy Gotify Versions
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-legacy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        gotify-version:
+          - v2.4.0
+          - v2.3.0
+          - v2.2.5
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Install gomod-cap
+        run: go install github.com/gotify/plugin-api/cmd/gomod-cap@latest
+
+      - name: Clean go.mod for legacy build
+        run: |
+          # Remove conflicting sonic/loader module for older versions
+          cp go.mod go.mod.backup
+          grep -v "github.com/bytedance/sonic/loader" go.mod.backup > go.mod || true
+
+      - name: Build for ${{ matrix.gotify-version }}
+        run: |
+          # Add go/bin to PATH for gomod-cap
+          export PATH=$PATH:$HOME/go/bin
+          
+          # Clean module cache to avoid conflicts
+          go clean -modcache
+          
+          make GOTIFY_VERSION="${{ matrix.gotify-version }}" \
+               FILE_SUFFIX="-for-gotify-${{ matrix.gotify-version }}" \
+               build
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: plugins-legacy-${{ matrix.gotify-version }}
+          path: build/*.so

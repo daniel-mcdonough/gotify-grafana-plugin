@@ -30,19 +30,21 @@ jobs:
         id: check-versions
         run: |
           # Get the latest patch version for each minor version
+          # Only include versions >= 2.5.0 to avoid dependency conflicts
           LATEST_VERSIONS=$(curl -s https://api.github.com/repos/gotify/server/releases?per_page=30 | \
             jq -r '[
               .[] | 
               select(.prerelease == false) | 
               .tag_name | 
               capture("^v(?<major>[0-9]+)\\.(?<minor>[0-9]+)\\.(?<patch>[0-9]+)$") |
+              select((.major | tonumber) >= 2 and (.minor | tonumber) >= 5) |
               {major: .major, minor: .minor, patch: .patch, version: ("v" + .major + "." + .minor + "." + .patch)}
             ] | 
             group_by(.major + "." + .minor) | 
             map(max_by(.patch).version) | 
             sort | 
             reverse | 
-            .[0:7]')
+            .[0:5]')
           
           # Check if we have artifacts for these versions already
           # You could check releases or maintain a versions file
