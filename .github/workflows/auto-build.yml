@@ -7,6 +7,12 @@ on:
   workflow_dispatch:
   push:
     branches: [ master, main ]
+    paths:
+      - '**.go'
+      - 'go.mod'
+      - 'go.sum'
+      - 'Makefile'
+      - '.github/workflows/auto-build.yml'
     tags:
       - 'v*'
 
