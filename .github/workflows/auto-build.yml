@@ -43,7 +43,7 @@ jobs:
           echo "Latest versions from Gotify: $LATEST_VERSIONS"
           
           # For now, just build the latest versions
-          VERSIONS_JSON=$(echo "$LATEST_VERSIONS" | jq -c '@json')
+          VERSIONS_JSON=$(echo "$LATEST_VERSIONS" | jq -c '.')
           echo "versions=$VERSIONS_JSON" >> $GITHUB_OUTPUT
           echo "has_new=true" >> $GITHUB_OUTPUT
 
