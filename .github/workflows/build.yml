@@ -8,6 +8,9 @@ on:
         required: false
         default: ''
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -16,9 +19,8 @@ jobs:
         # Default set of stable versions if no specific version provided
         # Only includes latest patch of each minor version
         gotify-version:
-          - v2.6.3  # Latest 2.6.x
-      #    - v2.5.0  # Latest 2.5.x
-       #   - v2.4.0  # Latest 2.4.x
+          - v2.6.3
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
