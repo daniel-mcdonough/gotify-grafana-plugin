@@ -19,7 +19,7 @@ jobs:
         # Default set of stable versions if no specific version provided
         # Only includes latest patch of each minor version
         gotify-version:
-          - v2.6.3
+          - v2.8.0
 
     steps:
       - name: Checkout code
